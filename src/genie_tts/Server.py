@@ -143,7 +143,7 @@ async def tts_endpoint(payload: TTSPayload):
     return StreamingResponse(audio_stream_generator(stream_queue), media_type="audio/wav")
 
 
-@app.post("/stop")
+@app.get("/stop")
 def stop_endpoint():
     try:
         tts_player.stop()
@@ -152,7 +152,7 @@ def stop_endpoint():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/clear_reference_audio_cache")
+@app.get("/clear_reference_audio_cache")
 def clear_reference_audio_cache_endpoint():
     try:
         ReferenceAudio.clear_cache()
@@ -162,6 +162,7 @@ def clear_reference_audio_cache_endpoint():
 
 
 def start_server(host: str = "127.0.0.1", port: int = 8000, workers: int = 1):
+    logger.info(f"Starting server on {host}:{port} with {workers} workers...")
     uvicorn.run(app, host=host, port=port, workers=workers)
 
 

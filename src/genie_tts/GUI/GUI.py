@@ -3,6 +3,7 @@ import os
 import shutil
 from typing import List, Optional, TextIO, Any
 import uuid
+import logging
 
 import soundfile as sf
 import numpy as np
@@ -625,6 +626,33 @@ class MainWindow(QMainWindow):
         sys.stdout = LogRedirector()
         sys.stdout.textWritten.connect(self.log_widget.append_log)
 
+        # 为 root logger 添加一个输出到当前 sys.stdout 的 handler
+        root_logger = logging.getLogger()
+        # 避免多次创建主窗口时重复添加
+        if not any(isinstance(h, logging.StreamHandler) and h.stream is sys.stdout 
+                   for h in root_logger.handlers):
+            handler = logging.StreamHandler(sys.stdout)
+            # 可自定义格式，与 uvicorn 默认格式保持一致
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            root_logger.addHandler(handler)
+            # 可选：设置日志级别，避免 DEBUG 信息刷屏
+            root_logger.setLevel(logging.INFO)
+
+        # 确保 uvicorn 相关日志进入界面
+        uvicorn_log_names = ['uvicorn', 'uvicorn.error', 'uvicorn.access']
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        ))
+        for name in uvicorn_log_names:
+            logger = logging.getLogger(name)
+            logger.handlers.clear()  # 清除 uvicorn 自己的默认 handler（可选）
+            logger.addHandler(handler)
+            logger.propagate = False
+        
         # 初始化主界面
         self.tabs: QTabWidget = QTabWidget()
         self.tts_widget = TTSWidget(self.player)
